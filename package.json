@@ -1,0 +1,14 @@
+{
+  "name": "ha-desktop",
+  "version": "1.0.0",
+  "description": "Home Assistant Desktop",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "@tauri-apps/api": "^2.0.0"
+  }
+}

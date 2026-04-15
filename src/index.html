@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HA Desktop</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="titlebar">
+  <div class="titlebar-drag" data-tauri-drag-region>
+    <div class="app-logo">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <path d="M3 12L12 3L21 12V21H15V15H9V21H3V12Z" fill="url(#hag)"/>
+        <defs><linearGradient id="hag" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#63b3ed"/><stop offset="100%" stop-color="#4299e1"/>
+        </linearGradient></defs>
+      </svg>
+    </div>
+    <span class="app-title" data-tauri-drag-region>HA Desktop</span>
+  </div>
+  <div class="titlebar-tabs" id="tabBar"></div>
+  <div class="titlebar-right">
+    <button class="tb-btn" id="addTabBtn" title="Dodaj lokaciju">+</button>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" id="btnMin">─</button>
+    <button class="tb-btn" id="btnMax">▢</button>
+    <button class="tb-btn danger" id="btnClose">✕</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">PRIKAZ</div>
+      <button class="sidebar-btn active" id="viewWidgets" data-view="widgets">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Widgets
+      </button>
+      <button class="sidebar-btn" id="viewFullHA" data-view="fullha">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12L12 3L21 12V21H15V15H9V21H3V12Z"/></svg>
+        Full HA
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">FILTERI</div>
+      <button class="sidebar-btn active-filter" data-filter="all">Sve</button>
+      <button class="sidebar-btn" data-filter="light">💡 Svetla</button>
+      <button class="sidebar-btn" data-filter="switch">🔌 Prekidači</button>
+      <button class="sidebar-btn" data-filter="sensor">🌡️ Senzori</button>
+      <button class="sidebar-btn" data-filter="binary">🚪 Kontakti</button>
+      <button class="sidebar-btn" data-filter="climate">❄️ Klima</button>
+      <button class="sidebar-btn" data-filter="scene">🎬 Scene</button>
+    </div>
+    <div class="sidebar-bottom">
+      <button class="sidebar-btn" id="refreshBtn">🔄 Osveži</button>
+      <button class="sidebar-btn" id="settingsBtn">⚙️ Podešavanja</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">🏠</div>
+      <h2>Nema lokacija</h2>
+      <p>Dodaj Home Assistant lokaciju klikom na + dugme</p>
+      <button class="btn-primary" id="emptyAddBtn">+ Dodaj lokaciju</button>
+    </div>
+
+    <div class="view-panel" id="widgetsView" style="display:none">
+      <div class="view-header">
+        <div class="view-header-left">
+          <div class="instance-badge">
+            <span class="instance-dot" id="instanceDot"></span>
+            <span id="instanceName">—</span>
+          </div>
+          <span class="entity-count" id="entityCount"></span>
+        </div>
+        <div class="search-box">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="searchInput" placeholder="Pretraži..." />
+        </div>
+      </div>
+      <div class="widgets-grid" id="widgetsGrid"></div>
+    </div>
+
+    <div class="view-panel" id="fullHaView" style="display:none">
+      <div class="webview-bar">
+        <span id="haUrl" class="webview-url"></span>
+        <button class="btn-ghost-sm" id="openExternalBtn">↗ Otvori u browseru</button>
+      </div>
+      <div class="webview-container">
+        <iframe id="haIframe" src="" frameborder="0" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"></iframe>
+        <div class="iframe-overlay" id="iframeLoading">
+          <div class="spinner"></div>
+          <p>Učitavanje Home Assistant...</p>
+          <small id="iframeNote">Ako se HA ne učitava, klikni "Otvori u browseru"</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="loading-state" id="loadingState" style="display:none">
+      <div class="spinner large"></div>
+      <p>Učitavanje entiteta...</p>
+    </div>
+
+    <div class="error-state" id="errorState" style="display:none">
+      <div style="font-size:40px">⚠️</div>
+      <h3>Greška pri konekciji</h3>
+      <p id="errorMsg"></p>
+      <button class="btn-primary" id="retryBtn">Pokušaj ponovo</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add/Edit -->
+<div class="modal-overlay" id="instanceModal" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">Dodaj lokaciju</h3>
+      <button class="modal-close" id="modalClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <label>Naziv lokacije</label>
+      <input type="text" id="inputName" placeholder="Stan, Kancelarija, Vikendica..." />
+      <label>Ikona</label>
+      <div class="icon-picker" id="iconPicker">
+        <button class="icon-opt selected" data-icon="🏠">🏠</button>
+        <button class="icon-opt" data-icon="🏢">🏢</button>
+        <button class="icon-opt" data-icon="🏖️">🏖️</button>
+        <button class="icon-opt" data-icon="🏡">🏡</button>
+        <button class="icon-opt" data-icon="🏗️">🏗️</button>
+        <button class="icon-opt" data-icon="⚓">⚓</button>
+        <button class="icon-opt" data-icon="🔧">🔧</button>
+        <button class="icon-opt" data-icon="🌿">🌿</button>
+      </div>
+      <label>Home Assistant URL</label>
+      <input type="url" id="inputUrl" placeholder="https://moj-ha.duckdns.org:8123" />
+      <label>Long-Lived Access Token</label>
+      <div class="input-row">
+        <input type="password" id="inputToken" placeholder="eyJhbGci..." />
+        <button class="btn-icon" id="toggleToken">👁</button>
+      </div>
+      <div class="help-text">Profil → Sigurnost → Dugotrajni pristupni tokeni → Stvori token</div>
+      <div class="modal-actions">
+        <button class="btn-ghost" id="testConnBtn">⚡ Test veze</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn-ghost" id="modalCancel">Otkaži</button>
+          <button class="btn-primary" id="modalSave">Sačuvaj</button>
+        </div>
+      </div>
+      <div class="conn-result" id="connResult" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Confirm -->
+<div class="modal-overlay" id="confirmModal" style="display:none">
+  <div class="modal small">
+    <div class="modal-header"><h3>Ukloni lokaciju?</h3></div>
+    <div class="modal-body">
+      <p id="confirmMsg"></p>
+      <div class="modal-actions">
+        <button class="btn-ghost" id="confirmCancel">Otkaži</button>
+        <button class="btn-danger" id="confirmOk">Ukloni</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+<script src="app.js"></script>
+</body>
+</html>

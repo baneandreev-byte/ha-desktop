@@ -1,0 +1,16 @@
+# Rust / Cargo
+src-tauri/target/
+
+# Node
+node_modules/
+.cache/
+
+# Tauri
+src-tauri/WixTools/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude
+.claude/launch.json
