@@ -279,52 +279,50 @@ function buildCard(e, inst) {
 }
 
 function closeHaWebview() {
-  const inv = getInvoke();
-  if (inv) inv('hide_ha_webview').catch(() => {});
   document.getElementById('haIframe').src = '';
+}
+
+async function openInBrowser(url) {
+  const inv = getInvoke();
+  if (inv) {
+    try { await window.__TAURI__.shell.open(url); return; } catch {}
+    try { await inv('plugin:shell|open', { path: url }); return; } catch {}
+  }
+  window.open(url, '_blank');
 }
 
 function renderFullHA(inst) {
   showPanel('fullHaView');
   document.getElementById('haUrl').textContent = inst.url;
-
-  const openExternal = async () => {
-    const inv = getInvoke();
-    if (inv) {
-      try { await window.__TAURI__.shell.open(inst.url); return; } catch {}
-      try { await inv('plugin:shell|open', { path: inst.url }); return; } catch {}
-    }
-    window.open(inst.url, '_blank');
-  };
-  document.getElementById('openExternalBtn').onclick = openExternal;
+  document.getElementById('openExternalBtn').onclick = () => openInBrowser(inst.url);
 
   const inv = getInvoke();
   if (inv) {
-    // Tauri: native WebviewWindow — zaobilazi X-Frame-Options
+    // Tauri: otvori u sistemskom browseru (WebView2 ima problem sa spoljnim URL-ovima)
     const iframe = document.getElementById('haIframe');
     const overlay = document.getElementById('iframeLoading');
     iframe.style.display = 'none';
     overlay.classList.add('hidden');
 
-    // Prikaži placeholder dok se HA prozor otvara
     const container = document.querySelector('.webview-container');
     container.innerHTML = `
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
-                  height:100%;gap:14px;color:var(--text-2)">
-        <div style="font-size:48px">🏠</div>
-        <div style="font-size:14px;font-weight:600;color:var(--text-1)">Home Assistant se otvara...</div>
-        <div style="font-size:12px;color:var(--text-3);max-width:260px;text-align:center">
-          HA se prikazuje u posebnom prozoru radi potpune kompatibilnosti
+                  height:100%;gap:16px;color:var(--text-2)">
+        <div style="font-size:52px">🏠</div>
+        <div style="font-size:15px;font-weight:700;color:var(--text-1)">Home Assistant</div>
+        <div style="font-size:12px;color:var(--text-3);max-width:280px;text-align:center;line-height:1.6">
+          Klikni dugme ispod da otvoriš HA u podrazumevanom browseru
         </div>
-        <button class="btn-primary" id="focusHaBtn" style="margin-top:8px">↗ Fokusiraj prozor</button>
+        <button class="btn-primary" id="openHaBtn" style="margin-top:4px;padding:10px 22px;font-size:14px">
+          ↗ Otvori Home Assistant
+        </button>
+        <div style="font-size:11px;color:var(--text-3);font-family:monospace">${inst.url}</div>
       </div>`;
 
-    document.getElementById('focusHaBtn').onclick = openExternal;
+    document.getElementById('openHaBtn').onclick = () => openInBrowser(inst.url);
 
-    inv('show_ha_webview', { url: inst.url })
-      .catch(e => showToast('Greška: ' + e, 'error'));
   } else {
-    // Browser fallback — iframe (može biti blokiran X-Frame-Options)
+    // Browser/dev preview fallback — iframe
     const iframe = document.getElementById('haIframe');
     const overlay = document.getElementById('iframeLoading');
     iframe.style.display = '';

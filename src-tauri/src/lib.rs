@@ -143,35 +143,6 @@ async fn ha_test_connection(url: String, token: String) -> Result<ApiResponse, S
     }
 }
 
-/// Open HA in a native WebviewWindow (bypasses X-Frame-Options)
-#[tauri::command]
-fn show_ha_webview(app: tauri::AppHandle, url: String) -> Result<(), String> {
-    use tauri::{Manager, WebviewWindowBuilder, WebviewUrl};
-
-    // Close existing HA window if present
-    if let Some(v) = app.get_webview_window("ha-view") {
-        let _ = v.close();
-    }
-
-    let parsed = tauri::Url::parse(&url).map_err(|e| e.to_string())?;
-
-    WebviewWindowBuilder::new(&app, "ha-view", WebviewUrl::External(parsed))
-        .title("Home Assistant")
-        .inner_size(1280.0, 900.0)
-        .center()
-        .build()
-        .map_err(|e| e.to_string())?;
-
-    Ok(())
-}
-
-#[tauri::command]
-fn hide_ha_webview(app: tauri::AppHandle) {
-    use tauri::Manager;
-    if let Some(v) = app.get_webview_window("ha-view") {
-        let _ = v.close();
-    }
-}
 
 #[tauri::command]
 async fn window_minimize(window: tauri::WebviewWindow) {
@@ -202,8 +173,6 @@ pub fn run() {
             window_minimize,
             window_maximize,
             window_close,
-            show_ha_webview,
-            hide_ha_webview,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
