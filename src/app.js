@@ -278,35 +278,66 @@ function buildCard(e, inst) {
   return card;
 }
 
+function closeHaWebview() {
+  const inv = getInvoke();
+  if (inv) inv('hide_ha_webview').catch(() => {});
+  document.getElementById('haIframe').src = '';
+}
+
 function renderFullHA(inst) {
   showPanel('fullHaView');
-  const iframe=document.getElementById('haIframe');
-  const overlay=document.getElementById('iframeLoading');
   document.getElementById('haUrl').textContent = inst.url;
-  overlay.classList.remove('hidden');
 
-  document.getElementById('openExternalBtn').onclick = async () => {
+  const openExternal = async () => {
     const inv = getInvoke();
-    if(inv) {
-      try {
-        // Tauri 2.x shell open
-        await window.__TAURI__.shell.open(inst.url);
-        return;
-      } catch(e1) {
-        try { await inv('plugin:shell|open', { path:inst.url }); return; } catch {}
-      }
+    if (inv) {
+      try { await window.__TAURI__.shell.open(inst.url); return; } catch {}
+      try { await inv('plugin:shell|open', { path: inst.url }); return; } catch {}
     }
-    window.open(inst.url,'_blank');
+    window.open(inst.url, '_blank');
   };
+  document.getElementById('openExternalBtn').onclick = openExternal;
 
-  iframe.src='';
-  setTimeout(()=>{
-    iframe.src=inst.url;
-    setTimeout(()=>overlay.classList.add('hidden'), 5000);
-    iframe.onload=()=>{
-      try { if(iframe.contentDocument) overlay.classList.add('hidden'); } catch { overlay.classList.add('hidden'); }
-    };
-  },100);
+  const inv = getInvoke();
+  if (inv) {
+    // Tauri: native WebviewWindow — zaobilazi X-Frame-Options
+    const iframe = document.getElementById('haIframe');
+    const overlay = document.getElementById('iframeLoading');
+    iframe.style.display = 'none';
+    overlay.classList.add('hidden');
+
+    // Prikaži placeholder dok se HA prozor otvara
+    const container = document.querySelector('.webview-container');
+    container.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+                  height:100%;gap:14px;color:var(--text-2)">
+        <div style="font-size:48px">🏠</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text-1)">Home Assistant se otvara...</div>
+        <div style="font-size:12px;color:var(--text-3);max-width:260px;text-align:center">
+          HA se prikazuje u posebnom prozoru radi potpune kompatibilnosti
+        </div>
+        <button class="btn-primary" id="focusHaBtn" style="margin-top:8px">↗ Fokusiraj prozor</button>
+      </div>`;
+
+    document.getElementById('focusHaBtn').onclick = openExternal;
+
+    inv('show_ha_webview', { url: inst.url })
+      .catch(e => showToast('Greška: ' + e, 'error'));
+  } else {
+    // Browser fallback — iframe (može biti blokiran X-Frame-Options)
+    const iframe = document.getElementById('haIframe');
+    const overlay = document.getElementById('iframeLoading');
+    iframe.style.display = '';
+    overlay.classList.remove('hidden');
+    iframe.src = '';
+    setTimeout(() => {
+      iframe.src = inst.url;
+      setTimeout(() => overlay.classList.add('hidden'), 5000);
+      iframe.onload = () => {
+        try { if (iframe.contentDocument) overlay.classList.add('hidden'); } catch { overlay.classList.add('hidden'); }
+      };
+    }, 100);
+  }
 }
 
 function startRefresh(inst) {
@@ -437,12 +468,14 @@ function showCtx(e,inst) {
 
 // ── VIEW SWITCH ──
 document.getElementById('viewWidgets').addEventListener('click',()=>{
+  closeHaWebview();
   App.activeView='widgets';
   document.getElementById('viewWidgets').classList.add('active');
   document.getElementById('viewFullHA').classList.remove('active');
   if(App.activeId) renderView();
 });
 document.getElementById('viewFullHA').addEventListener('click',()=>{
+  closeHaWebview(); // zatvori stari webview pre novog
   App.activeView='fullha';
   document.getElementById('viewFullHA').classList.add('active');
   document.getElementById('viewWidgets').classList.remove('active');
