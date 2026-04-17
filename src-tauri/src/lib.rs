@@ -143,6 +143,27 @@ async fn ha_test_connection(url: String, token: String) -> Result<ApiResponse, S
     }
 }
 
+/// Open URL in Chrome (with fallback to default browser)
+#[tauri::command]
+async fn open_in_chrome(url: String) -> Result<(), String> {
+    let chrome_paths = [
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+    ];
+    for path in &chrome_paths {
+        if std::path::Path::new(path).exists() {
+            std::process::Command::new(path)
+                .arg(&url)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+            return Ok(());
+        }
+    }
+    if std::process::Command::new("chrome").arg(&url).spawn().is_ok() {
+        return Ok(());
+    }
+    Err("Chrome nije pronađen".to_string())
+}
 
 #[tauri::command]
 async fn window_minimize(window: tauri::WebviewWindow) {
@@ -170,6 +191,7 @@ pub fn run() {
             ha_get_states,
             ha_call_service,
             ha_test_connection,
+            open_in_chrome,
             window_minimize,
             window_maximize,
             window_close,

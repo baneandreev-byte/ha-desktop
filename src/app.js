@@ -285,6 +285,12 @@ function closeHaWebview() {
 async function openInBrowser(url) {
   const inv = getInvoke();
   if (inv) {
+    // Pokušaj Chrome direktno
+    try {
+      const res = await inv('open_in_chrome', { url });
+      if (res === null || res === undefined) return; // uspeh
+    } catch {}
+    // Fallback: podrazumevani browser
     try { await window.__TAURI__.shell.open(url); return; } catch {}
     try { await inv('plugin:shell|open', { path: url }); return; } catch {}
   }
